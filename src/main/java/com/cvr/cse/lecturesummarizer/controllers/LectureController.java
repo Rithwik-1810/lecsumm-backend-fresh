@@ -12,7 +12,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/lectures")
-@CrossOrigin(origins = {"https://lecsumm.indevs.in", "https://lecsumm.vercel.app", "http://localhost:5173"}, allowCredentials = "true")
+@CrossOrigin(origins = {"https://lecsumm.indevs.in", "https://lecsumm.vercel.app", "http://localhost:5173"}, 
+             allowCredentials = "true",
+             allowedHeaders = "*",
+             methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class LectureController {
 
     @Autowired
@@ -22,6 +25,9 @@ public class LectureController {
     private JwtUtil jwtUtil;
 
     @PostMapping("/upload")
+    @CrossOrigin(origins = {"https://lecsumm.indevs.in", "https://lecsumm.vercel.app", "http://localhost:5173"},
+                 allowCredentials = "true",
+                 allowedHeaders = "*")
     public ResponseEntity<?> uploadLecture(
             @RequestHeader("Authorization") String token,
             @RequestParam("file") MultipartFile file,
