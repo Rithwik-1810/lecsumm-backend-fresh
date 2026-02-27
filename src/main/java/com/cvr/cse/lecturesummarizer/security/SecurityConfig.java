@@ -29,7 +29,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.disable()) // DISABLE SPRING CORS - WE'RE USING OUR FILTER
+            .cors(cors -> cors.disable()) // Crucial: Disable Spring's CORS handling
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/health").permitAll()
