@@ -1,6 +1,5 @@
 FROM python:3.10-slim
 
-# Install ffmpeg and git (git might still be needed for some dependencies)
 RUN apt-get update && apt-get install -y ffmpeg git && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
