@@ -2,6 +2,8 @@ package com.cvr.cse.lecturesummarizer.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,8 @@ import java.util.List;
 
 @Service
 public class AIService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AIService.class);
 
     @Value("${ai.service.url}")
     private String aiServiceUrl;
@@ -43,20 +47,23 @@ public class AIService {
         private String transcript;
         private SummaryDTO summary;
         private List<TaskDTO> tasks;
+        private double durationSeconds;   // <-- NEW FIELD
     }
 
-    public AIResponse processLecture(String filePath, String language, 
+    public AIResponse processLecture(String filePath, String language,
                                      boolean extractTasks, boolean generateSummary) throws Exception {
-        
+
         String url = aiServiceUrl + "/process";
-        
+        logger.info("Calling AI service at: {}", url);
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        
+
         File file = new File(filePath);
-        
+        logger.info("Sending file: {} (size: {} bytes)", file.getName(), file.length());
+
         HttpEntity<byte[]> fileEntity = new HttpEntity<>(Files.readAllBytes(file.toPath()), createFileHeaders(file.getName()));
         body.add("file", fileEntity);
         body.add("language", language);
@@ -65,9 +72,15 @@ public class AIService {
 
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-        ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
-        
-        return objectMapper.readValue(response.getBody(), AIResponse.class);
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+            logger.info("AI service responded with status: {}", response.getStatusCode());
+            logger.info("Raw response body: {}", response.getBody());
+            return objectMapper.readValue(response.getBody(), AIResponse.class);
+        } catch (Exception e) {
+            logger.error("Error calling AI service: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     private HttpHeaders createFileHeaders(String filename) {

@@ -37,6 +37,6 @@ public class User {
         private int totalSummaries = 0;
         private int totalTasks = 0;
         private int completedTasks = 0;
-        private int hoursSaved = 0;
+        private double hoursSaved = 0.0;   // <-- must be double
     }
 }

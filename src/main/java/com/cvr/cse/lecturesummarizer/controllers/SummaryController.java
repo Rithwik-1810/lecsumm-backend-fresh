@@ -2,7 +2,8 @@ package com.cvr.cse.lecturesummarizer.controllers;
 
 import com.cvr.cse.lecturesummarizer.models.Summary;
 import com.cvr.cse.lecturesummarizer.services.SummaryService;
-import com.cvr.cse.lecturesummarizer.security.JwtUtil;  // Changed from 'utils' to 'security'
+import com.cvr.cse.lecturesummarizer.security.JwtUtil;
+import com.cvr.cse.lecturesummarizer.repositories.SummaryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,9 @@ public class SummaryController {
 
     @Autowired
     private SummaryService summaryService;
+
+    @Autowired
+    private SummaryRepository summaryRepository;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -38,6 +42,19 @@ public class SummaryController {
             return ResponseEntity.ok(summary);
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/lecture/{lectureId}")
+    public ResponseEntity<?> getSummaryByLectureId(@PathVariable String lectureId) {
+        try {
+            List<Summary> summaries = summaryRepository.findByLectureId(lectureId);
+            if (summaries.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(summaries.get(0));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 

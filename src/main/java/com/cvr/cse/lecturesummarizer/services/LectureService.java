@@ -8,9 +8,10 @@ import com.cvr.cse.lecturesummarizer.repositories.LectureRepository;
 import com.cvr.cse.lecturesummarizer.repositories.SummaryRepository;
 import com.cvr.cse.lecturesummarizer.repositories.TaskRepository;
 import com.cvr.cse.lecturesummarizer.repositories.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,6 +27,8 @@ import java.util.UUID;
 
 @Service
 public class LectureService {
+
+    private static final Logger logger = LoggerFactory.getLogger(LectureService.class);
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -45,35 +48,31 @@ public class LectureService {
     @Autowired
     private AIService aiService;
 
-    public Lecture uploadLecture(String email, MultipartFile file, String title, 
+    public Lecture uploadLecture(String email, MultipartFile file, String title,
                                  String language, boolean extractTasks, boolean generateSummary) throws IOException {
-        
+
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Create upload directory if not exists
         File directory = new File(uploadDir);
         if (!directory.exists()) {
             directory.mkdirs();
         }
 
-        // Generate unique filename
         String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
         Path filePath = Paths.get(uploadDir, fileName);
         Files.copy(file.getInputStream(), filePath);
 
-        // Create lecture record
         Lecture lecture = new Lecture();
         lecture.setUserId(user.getId());
         lecture.setTitle(title != null ? title : file.getOriginalFilename());
         lecture.setFileName(fileName);
         lecture.setFileUrl("/uploads/" + fileName);
         lecture.setFileSize(file.getSize());
-        
-        // Fix line 72: Handle null content type
+
         String contentType = file.getContentType();
         lecture.setFileType(contentType != null && contentType.startsWith("video") ? "video" : "audio");
-        
+
         lecture.setLanguage(language);
         lecture.setExtractTasks(extractTasks);
         lecture.setGenerateSummary(generateSummary);
@@ -82,8 +81,8 @@ public class LectureService {
         lecture.setUpdatedAt(LocalDateTime.now());
 
         Lecture savedLecture = lectureRepository.save(lecture);
+        logger.info("Lecture saved with ID: {}", savedLecture.getId());
 
-        // Process asynchronously
         processLectureAsync(savedLecture, filePath.toString());
 
         return savedLecture;
@@ -92,20 +91,25 @@ public class LectureService {
     @Async
     public void processLectureAsync(Lecture lecture, String filePath) {
         try {
-            // Update status to processing
             lecture.setStatus("processing");
             lecture.setUpdatedAt(LocalDateTime.now());
             lectureRepository.save(lecture);
+            logger.info("Processing lecture: {} (file: {})", lecture.getId(), filePath);
 
-            // Call Python AI service
             AIService.AIResponse aiResponse = aiService.processLecture(
-                filePath, 
+                filePath,
                 lecture.getLanguage(),
                 lecture.isExtractTasks(),
                 lecture.isGenerateSummary()
             );
 
-            // Create summary
+            logger.info("AI response received. Duration: {} seconds", aiResponse.getDurationSeconds());
+
+            // Store duration in lecture
+            lecture.setDurationSeconds(aiResponse.getDurationSeconds());
+            lectureRepository.save(lecture);
+
+            // Create summary if present
             if (aiResponse != null && aiResponse.getSummary() != null) {
                 Summary summary = new Summary();
                 summary.setLectureId(lecture.getId());
@@ -116,17 +120,25 @@ public class LectureService {
                 summary.setTranscript(aiResponse.getTranscript());
                 summary.setConfidence(aiResponse.getSummary().getConfidence());
                 summary.setCreatedAt(LocalDateTime.now());
-                summaryRepository.save(summary);
 
-                // Update user stats
+                Summary savedSummary = summaryRepository.save(summary);
+                logger.info("Summary saved with ID: {} for lecture: {}", savedSummary.getId(), lecture.getId());
+
+                // Update user stats using actual duration
                 userRepository.findById(lecture.getUserId()).ifPresent(user -> {
-                    user.getStats().setTotalSummaries(user.getStats().getTotalSummaries() + 1);
-                    user.getStats().setHoursSaved(user.getStats().getHoursSaved() + 1);
+                    User.UserStats stats = user.getStats();
+                    stats.setTotalSummaries(stats.getTotalSummaries() + 1);
+                    double hoursSaved = aiResponse.getDurationSeconds() / 3600.0;
+                    stats.setHoursSaved(stats.getHoursSaved() + hoursSaved);
                     userRepository.save(user);
+                    logger.info("User stats updated for user: {} (added {} hours, new total {})",
+                            user.getId(), hoursSaved, stats.getHoursSaved());
                 });
+            } else {
+                logger.warn("No summary in AI response for lecture: {}", lecture.getId());
             }
 
-            // Create tasks
+            // Create tasks if present
             if (aiResponse != null && aiResponse.getTasks() != null && !aiResponse.getTasks().isEmpty()) {
                 for (AIService.TaskDTO taskDTO : aiResponse.getTasks()) {
                     Task task = new Task();
@@ -139,20 +151,24 @@ public class LectureService {
                     task.setProgress(0);
                     task.setCreatedAt(LocalDateTime.now());
                     task.setUpdatedAt(LocalDateTime.now());
-                    taskRepository.save(task);
+
+                    Task savedTask = taskRepository.save(task);
+                    logger.info("Task saved with ID: {} for lecture: {}", savedTask.getId(), lecture.getId());
                 }
+            } else {
+                logger.info("No tasks to save for lecture: {}", lecture.getId());
             }
 
-            // Update lecture status to completed
             lecture.setStatus("completed");
             lecture.setUpdatedAt(LocalDateTime.now());
             lectureRepository.save(lecture);
+            logger.info("Lecture processing completed for ID: {}", lecture.getId());
 
         } catch (Exception e) {
             lecture.setStatus("failed");
             lecture.setUpdatedAt(LocalDateTime.now());
             lectureRepository.save(lecture);
-            e.printStackTrace();
+            logger.error("Failed to process lecture: {}", lecture.getId(), e);
         }
     }
 
@@ -169,19 +185,17 @@ public class LectureService {
 
     public void deleteLecture(String id) {
         Lecture lecture = getLecture(id);
-        
-        // Delete file
+
         Path filePath = Paths.get(uploadDir, lecture.getFileName());
         try {
             Files.deleteIfExists(filePath);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Failed to delete file: {}", filePath, e);
         }
 
-        // Delete associated summaries and tasks
         summaryRepository.deleteByLectureId(id);
         taskRepository.deleteByLectureId(id);
-        
         lectureRepository.deleteById(id);
+        logger.info("Lecture deleted: {}", id);
     }
 }

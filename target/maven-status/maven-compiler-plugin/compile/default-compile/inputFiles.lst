@@ -6,6 +6,7 @@ C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-spring
 C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\services\LectureService.java
 C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\security\JwtRequestFilter.java
 C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\controllers\TaskController.java
+C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\config\CorsConfig.java
 C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\repositories\UserRepository.java
 C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\security\SecurityConfig.java
 C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\dto\TaskDTO.java
@@ -15,6 +16,8 @@ C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-spring
 C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\services\UserService.java
 C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\repositories\LectureRepository.java
 C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\dto\AuthResponse.java
+C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\config\AuthenticationManagerConfig.java
+C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\config\CorsFilter.java
 C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\dto\AuthRequest.java
 C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\security\JwtUtil.java
 C:\Users\rithw\OneDrive\Desktop\Rithwik CVR\ai-lecture-summarizer\backend-springboot\src\main\java\com\cvr\cse\lecturesummarizer\services\AIService.java

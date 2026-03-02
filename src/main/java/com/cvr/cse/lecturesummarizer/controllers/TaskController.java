@@ -2,7 +2,7 @@ package com.cvr.cse.lecturesummarizer.controllers;
 
 import com.cvr.cse.lecturesummarizer.models.Task;
 import com.cvr.cse.lecturesummarizer.services.TaskService;
-import com.cvr.cse.lecturesummarizer.security.JwtUtil;  // Changed from 'utils' to 'security'
+import com.cvr.cse.lecturesummarizer.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,7 +11,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/tasks")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {"https://lecsumm.indevs.in", "https://lecsumm.vercel.app", "http://localhost:5173"}, 
+             allowCredentials = "true")
 public class TaskController {
 
     @Autowired

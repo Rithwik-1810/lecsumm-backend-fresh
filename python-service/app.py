@@ -1,143 +1,116 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-import tempfile
-import logging
+import uuid
+import subprocess
+import json
+from werkzeug.utils import secure_filename
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from speech_to_text import SpeechToText
+from summarizer import Summarizer
+from task_extractor import TaskExtractor
 
 app = Flask(__name__)
 CORS(app)
 
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'mp3', 'wav', 'm4a', 'ogg', 'flac', 'mp4', 'avi', 'mov'}
+MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500MB
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+stt = SpeechToText()
+summarizer = Summarizer()
+task_extractor = TaskExtractor()
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def get_audio_duration(filepath):
+    """Use ffprobe to get duration in seconds"""
+    try:
+        result = subprocess.run(
+            ['ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', filepath],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        info = json.loads(result.stdout)
+        return float(info['format']['duration'])
+    except Exception as e:
+        print(f"Error getting duration: {e}")
+        return 0.0
+
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'healthy', 'message': 'Python AI Service is running'}), 200
+    return jsonify({"status": "ok"})
 
 @app.route('/process', methods=['POST'])
 def process_lecture():
     try:
-        # Check if file is present
         if 'file' not in request.files:
-            return jsonify({'error': 'No file provided'}), 400
+            return jsonify({"error": "No file provided"}), 400
 
         file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "Empty filename"}), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({"error": "File type not allowed"}), 400
+
         language = request.form.get('language', 'english')
         extract_tasks = request.form.get('extractTasks', 'true').lower() == 'true'
         generate_summary = request.form.get('generateSummary', 'true').lower() == 'true'
 
-        # Save file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp_file:
-            file.save(tmp_file.name)
-            temp_path = tmp_file.name
+        filename = secure_filename(f"{uuid.uuid4()}_{file.filename}")
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
 
-        try:
-            # For now, return mock data since Whisper is not installed
-            logger.info(f"Processing file: {file.filename}")
-            
-            # Mock transcript
-            transcript = f"This is a simulated transcript for the lecture: {file.filename}. The lecture covers important topics in the field."
+        print(f"Processing file: {filename}")
 
-            response = {
-                'transcript': transcript,
-                'summary': None,
-                'tasks': []
+        # Get duration
+        duration_seconds = get_audio_duration(filepath)
+        print(f"Duration: {duration_seconds} seconds")
+
+        # Transcribe
+        transcript = stt.transcribe(filepath, language)
+        if not transcript:
+            return jsonify({"error": "Transcription failed"}), 500
+
+        # Summarize
+        summary_data = None
+        if generate_summary:
+            summary_text, key_points, topics = summarizer.summarize(transcript)
+            summary_data = {
+                "content": summary_text,
+                "keyPoints": key_points,
+                "topics": topics,
+                "confidence": 85
             }
 
-            # Mock summary for testing
-            if generate_summary:
-                response['summary'] = {
-                    'content': "This lecture covers key concepts and important topics. The main points include understanding the fundamentals and applying them in practice.",
-                    'keyPoints': [
-                        "Key concept 1: Understanding the basics",
-                        "Key concept 2: Practical applications",
-                        "Key concept 3: Advanced techniques"
-                    ],
-                    'topics': ["Machine Learning", "Neural Networks", "Deep Learning"],
-                    'confidence': 85
-                }
+        # Extract tasks
+        tasks = []
+        if extract_tasks:
+            tasks = task_extractor.extract_tasks(transcript)
 
-            # Mock tasks for testing
-            if extract_tasks:
-                response['tasks'] = [
-                    {
-                        'title': 'Complete assignment',
-                        'description': 'Finish the homework problems',
-                        'priority': 'High',
-                        'deadline': '2024-03-01'
-                    },
-                    {
-                        'title': 'Read chapter 5',
-                        'description': 'Study the recommended reading',
-                        'priority': 'Medium',
-                        'deadline': '2024-02-28'
-                    }
-                ]
+        # Clean up uploaded file (optional)
+        os.remove(filepath)
 
-            return jsonify(response), 200
+        response = {
+            "transcript": transcript,
+            "summary": summary_data,
+            "tasks": tasks,
+            "durationSeconds": duration_seconds   # <-- NEW field
+        }
 
-        finally:
-            # Clean up temp file
-            os.unlink(temp_path)
+        return jsonify(response)
 
     except Exception as e:
-        logger.error(f"Error processing lecture: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/summarize', methods=['POST'])
-def summarize():
-    try:
-        data = request.json
-        text = data.get('text', '')
-        
-        if not text:
-            return jsonify({'error': 'No text provided'}), 400
-
-        return jsonify({
-            'content': text[:200] + "..." if len(text) > 200 else text,
-            'keyPoints': ["Summary point 1", "Summary point 2", "Summary point 3"],
-            'topics': ["Topic A", "Topic B", "Topic C"],
-            'confidence': 80
-        }), 200
-
-    except Exception as e:
-        logger.error(f"Error summarizing: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/extract-tasks', methods=['POST'])
-def extract_tasks():
-    try:
-        data = request.json
-        text = data.get('text', '')
-
-        if not text:
-            return jsonify({'error': 'No text provided'}), 400
-
-        return jsonify({
-            'tasks': [
-                {
-                    'title': 'Task 1',
-                    'description': 'Complete the first task',
-                    'priority': 'High',
-                    'deadline': '2024-03-01'
-                },
-                {
-                    'title': 'Task 2',
-                    'description': 'Complete the second task',
-                    'priority': 'Medium',
-                    'deadline': '2024-02-28'
-                }
-            ]
-        }), 200
-
-    except Exception as e:
-        logger.error(f"Error extracting tasks: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        print(f"Error in process_lecture: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    print("=" * 50)
-    print("🚀 Python AI Service Starting...")
-    print("📍 http://localhost:5001")
-    print("=" * 50)
     app.run(host='0.0.0.0', port=5001, debug=True)
