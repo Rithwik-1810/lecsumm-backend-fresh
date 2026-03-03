@@ -48,6 +48,10 @@ public class LectureService {
     @Autowired
     private AIService aiService;
 
+    // Self‑injection to call async method via proxy
+    @Autowired
+    private LectureService self;
+
     public Lecture uploadLecture(String email, MultipartFile file, String title,
                                  String language, boolean extractTasks, boolean generateSummary) throws IOException {
 
@@ -83,13 +87,18 @@ public class LectureService {
         Lecture savedLecture = lectureRepository.save(lecture);
         logger.info("Lecture saved with ID: {}", savedLecture.getId());
 
-        processLectureAsync(savedLecture, filePath.toString());
+        // Call async method via self proxy
+        self.processLectureAsync(savedLecture, filePath.toString());
 
         return savedLecture;
     }
 
     @Async
     public void processLectureAsync(Lecture lecture, String filePath) {
+        // Force immediate log output
+        System.out.println(">>> ASYNC PROCESSING STARTED for lecture: " + lecture.getId());
+        logger.info(">>> ASYNC PROCESSING STARTED (logger) for lecture: {}", lecture.getId());
+
         try {
             lecture.setStatus("processing");
             lecture.setUpdatedAt(LocalDateTime.now());
@@ -105,11 +114,9 @@ public class LectureService {
 
             logger.info("AI response received. Duration: {} seconds", aiResponse.getDurationSeconds());
 
-            // Store duration in lecture
             lecture.setDurationSeconds(aiResponse.getDurationSeconds());
             lectureRepository.save(lecture);
 
-            // Create summary if present
             if (aiResponse != null && aiResponse.getSummary() != null) {
                 Summary summary = new Summary();
                 summary.setLectureId(lecture.getId());
@@ -124,21 +131,18 @@ public class LectureService {
                 Summary savedSummary = summaryRepository.save(summary);
                 logger.info("Summary saved with ID: {} for lecture: {}", savedSummary.getId(), lecture.getId());
 
-                // Update user stats using actual duration
                 userRepository.findById(lecture.getUserId()).ifPresent(user -> {
-                    User.UserStats stats = user.getStats();
-                    stats.setTotalSummaries(stats.getTotalSummaries() + 1);
+                    user.getStats().setTotalSummaries(user.getStats().getTotalSummaries() + 1);
                     double hoursSaved = aiResponse.getDurationSeconds() / 3600.0;
-                    stats.setHoursSaved(stats.getHoursSaved() + hoursSaved);
+                    user.getStats().setHoursSaved(user.getStats().getHoursSaved() + hoursSaved);
                     userRepository.save(user);
                     logger.info("User stats updated for user: {} (added {} hours, new total {})",
-                            user.getId(), hoursSaved, stats.getHoursSaved());
+                            user.getId(), hoursSaved, user.getStats().getHoursSaved());
                 });
             } else {
                 logger.warn("No summary in AI response for lecture: {}", lecture.getId());
             }
 
-            // Create tasks if present
             if (aiResponse != null && aiResponse.getTasks() != null && !aiResponse.getTasks().isEmpty()) {
                 for (AIService.TaskDTO taskDTO : aiResponse.getTasks()) {
                     Task task = new Task();
