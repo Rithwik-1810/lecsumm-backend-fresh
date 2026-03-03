@@ -11,10 +11,10 @@ import com.cvr.cse.lecturesummarizer.repositories.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
+// @Async  // Temporarily commented out for testing synchronous execution
 public class AsyncProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(AsyncProcessor.class);
@@ -34,10 +34,9 @@ public class AsyncProcessor {
     @Autowired
     private AIService aiService;
 
-    @Async
     public void processLecture(Lecture lecture, String filePath) {
-        System.out.println(">>> ASYNC PROCESSING STARTED for lecture: " + lecture.getId());
-        logger.info(">>> ASYNC PROCESSING STARTED (logger) for lecture: {}", lecture.getId());
+        System.out.println(">>> ASYNC PROCESSOR CALLED (SYNC TEST) for lecture: " + lecture.getId());
+        logger.info(">>> ASYNC PROCESSOR CALLED (SYNC TEST) for lecture: {}", lecture.getId());
 
         try {
             lecture.setStatus("processing");

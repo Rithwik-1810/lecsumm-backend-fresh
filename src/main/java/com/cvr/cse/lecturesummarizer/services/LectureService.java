@@ -35,10 +35,13 @@ public class LectureService {
     private UserRepository userRepository;
 
     @Autowired
-    private AsyncProcessor asyncProcessor;  // inject the new async processor
+    private AsyncProcessor asyncProcessor;
 
     public Lecture uploadLecture(String email, MultipartFile file, String title,
                                  String language, boolean extractTasks, boolean generateSummary) throws IOException {
+
+        System.out.println(">>> UPLOAD ENDPOINT HIT for file: " + file.getOriginalFilename());
+        logger.info(">>> UPLOAD ENDPOINT HIT for file: {}", file.getOriginalFilename());
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -72,7 +75,7 @@ public class LectureService {
         Lecture savedLecture = lectureRepository.save(lecture);
         logger.info("Lecture saved with ID: {}", savedLecture.getId());
 
-        // Call the async processor
+        // Call the async processor (synchronous for testing)
         asyncProcessor.processLecture(savedLecture, filePath.toString());
 
         return savedLecture;
@@ -99,11 +102,10 @@ public class LectureService {
             logger.error("Failed to delete file: {}", filePath, e);
         }
 
-        // Delete associated data (you may want to add cascade logic)
-        // For now, we assume repositories handle deletion; you might need to add methods.
-        // This is just a placeholder; ensure your repositories have these methods.
-        // e.g., summaryRepository.deleteByLectureId(id);
-        // e.g., taskRepository.deleteByLectureId(id);
+        // Add deletion of related summaries and tasks if needed
+        // (Assuming repositories have appropriate delete methods)
+        // summaryRepository.deleteByLectureId(id);
+        // taskRepository.deleteByLectureId(id);
         lectureRepository.deleteById(id);
         logger.info("Lecture deleted: {}", id);
     }
