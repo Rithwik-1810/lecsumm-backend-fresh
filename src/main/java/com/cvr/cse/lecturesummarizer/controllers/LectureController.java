@@ -76,4 +76,11 @@ public class LectureController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    // 🔍 NEW TEST ENDPOINT – remove after debugging
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        System.out.println(">>> TEST GET HIT");
+        return ResponseEntity.ok("Controller test ok");
+    }
 }
