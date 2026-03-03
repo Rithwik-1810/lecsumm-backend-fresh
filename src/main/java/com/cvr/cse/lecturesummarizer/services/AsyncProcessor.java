@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-// @Async  // Temporarily commented out for testing synchronous execution
 public class AsyncProcessor {
 
     private static final Logger logger = LoggerFactory.getLogger(AsyncProcessor.class);

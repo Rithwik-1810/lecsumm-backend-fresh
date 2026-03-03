@@ -75,8 +75,9 @@ public class LectureService {
         Lecture savedLecture = lectureRepository.save(lecture);
         logger.info("Lecture saved with ID: {}", savedLecture.getId());
 
-        // Call the async processor (synchronous for testing)
+        System.out.println(">>> ABOUT TO CALL PROCESSOR SYNC");
         asyncProcessor.processLecture(savedLecture, filePath.toString());
+        System.out.println(">>> PROCESSOR CALL COMPLETED");
 
         return savedLecture;
     }
@@ -102,10 +103,6 @@ public class LectureService {
             logger.error("Failed to delete file: {}", filePath, e);
         }
 
-        // Add deletion of related summaries and tasks if needed
-        // (Assuming repositories have appropriate delete methods)
-        // summaryRepository.deleteByLectureId(id);
-        // taskRepository.deleteByLectureId(id);
         lectureRepository.deleteById(id);
         logger.info("Lecture deleted: {}", id);
     }
