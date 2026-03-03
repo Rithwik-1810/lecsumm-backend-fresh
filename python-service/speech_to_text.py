@@ -1,7 +1,7 @@
 from faster_whisper import WhisperModel
 
 class SpeechToText:
-    def __init__(self, model_size="base"):
+    def __init__(self, model_size="tiny"):
         print(f"Loading Faster-Whisper model ({model_size})...")
         self.model = WhisperModel(model_size, device="cpu", compute_type="int8")
         print("Faster-Whisper model loaded")
