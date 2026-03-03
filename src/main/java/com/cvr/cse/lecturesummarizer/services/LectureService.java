@@ -103,6 +103,7 @@ public class LectureService {
             logger.error("Failed to delete file: {}", filePath, e);
         }
 
+        // You may want to delete related summaries/tasks here if needed
         lectureRepository.deleteById(id);
         logger.info("Lecture deleted: {}", id);
     }
