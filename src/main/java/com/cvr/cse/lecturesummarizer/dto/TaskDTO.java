@@ -1,5 +1,1 @@
-package main.java.com.cvr.cse.lecturesummarizer.dto;
-
-public class TaskDTO {
-    
-}
+package com.cvr.cse.lecturesummarizer.dto;
